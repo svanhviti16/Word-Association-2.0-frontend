@@ -105,33 +105,45 @@ parcelRequire = (function (modules, cache, entry, globalName) {
   // Override the current require with this new one
   return newRequire;
 })({"main.js":[function(require,module,exports) {
+function _toConsumableArray(arr) { return _arrayWithoutHoles(arr) || _iterableToArray(arr) || _nonIterableSpread(); }
+
+function _nonIterableSpread() { throw new TypeError("Invalid attempt to spread non-iterable instance"); }
+
+function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.prototype.toString.call(iter) === "[object Arguments]") return Array.from(iter); }
+
+function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
+
 // Basic game structure based on Brad Traversy's speed-typing game tutorial: https://www.youtube.com/watch?v=Yw-SYSG-028
-window.addEventListener('load', init); // Global scope variables
+window.addEventListener('load', init);
+var currentLevel = 11; // Global scope variables
 
 var score = 0;
 var isPlaying;
-var time = 10;
+var time = currentLevel;
 scoreStorage = window.localStorage; // DOM elements
 
 var wordInput = document.querySelector('#word-input');
 var contents = new Array();
-var mainWord = document.querySelector('#main-word');
-var other0 = document.querySelector('#other-0');
-var other1 = document.querySelector('#other-1');
-var other2 = document.querySelector('#other-2');
 var scoreDisplay = document.querySelector('#score');
 var scoreText = document.querySelector('#scoreText');
 var timeDisplay = document.querySelector('#time');
 var message = document.querySelector('#message');
 var feedback = document.querySelector('#feedback');
 var seconds = document.querySelector('#seconds');
-var skyldheitiDisplay = document.querySelector('#skyldheiti');
+var newGame = document.querySelector('#new-game');
+var wordList = document.querySelector('#word-list');
 var wordDict = {};
 var isValid; // Initialize Game
 
 function init() {
   // getting user score from local storage
-  score = scoreStorage.getItem("userScore");
+  score = scoreStorage.getItem("userScore"); // Decrement time
+
+  setInterval(countdown, 1000); // Check game status (often)
+
+  setInterval(checkStatus, 50); // Show number of seconds
+
+  console.log(currentLevel); //seconds.innerHTML = currentLevel;
 
   if (score >= 1) {
     scoreDisplay.innerHTML = score;
@@ -140,9 +152,24 @@ function init() {
   } // display random word
 
 
-  showWord(wordDict); // check typed words - waiting for user to press enter
+  showWord(wordDict);
+  wordInput.addEventListener('input', startMatch); // Call countdown every second
+  // check typed words - waiting for user to press enter
 
   matchWords(wordDict);
+} // Start match
+
+
+function startMatch() {
+  if (matchWords()) {
+    isPlaying = true;
+    time = 10;
+    showWord(words);
+    wordInput.value = '';
+    score++;
+  }
+
+  scoreDisplay.innerHTML = score;
 } // match word to skyldheiti
 // random index word
 
@@ -155,10 +182,20 @@ function showWord(wordDict) {
     wordDict["otherwords"] = word.otherwords; // contains the count
 
     console.log(wordDict);
-    mainWord.innerHTML = wordDict["mainword"];
-    other0.innerHTML = wordDict["otherwords"][0];
-    other1.innerHTML = wordDict["otherwords"][1];
-    other2.innerHTML = wordDict["otherwords"][2];
+    allWords = [word.mainword].concat(_toConsumableArray(word.otherwords));
+    allWords = shuffle(allWords);
+    console.log("allwords: " + allWords);
+    allWords.forEach(function (element) {
+      listword = document.createElement("h2");
+      listword.innerHTML = element;
+      listword.setAttribute("id", element);
+
+      if (element === word.mainword) {
+        listword.setAttribute("class", "main-word");
+      }
+
+      wordList.appendChild(listword);
+    });
     return wordDict;
   }).catch(function (err) {
     console.log("Error fetching word from server.");
@@ -175,6 +212,7 @@ function matchWords(wordDict) {
       fetch("http://localhost:5042/userword/".concat(wordInput.value, "+").concat(wordDict.mainword, "+").concat(wordDict.otherwords)).then(function (response) {
         return response.json();
       }).then(function (result) {
+        timeDisplay.style.display = "none";
         isCorrect = result.is_correct;
         mostSimilar = result.most_similar;
         var timeOut = 2500;
@@ -184,16 +222,20 @@ function matchWords(wordDict) {
           score++;
           scoreStorage.setItem("userScore", score);
           score = scoreStorage.getItem("userScore");
-          feedback.className = "green-text";
-          feedback.innerHTML = "Já, tölvan er sammála þér!";
+          document.querySelector(".main-word").classList.add("correct"); //feedback.className="green-text";
+          //feedback.innerHTML = "Já, tölvan er sammála þér!";
         } else {
           wordInput.value = '';
-          feedback.className = "blue-text";
-          feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
+
+          for (word in result.otherwords) {
+            console.log("orð " + word);
+          }
+
+          document.querySelector("#" + mostSimilar).className = "purple-text"; //feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
         }
 
         setTimeout(function () {
-          feedback.innerHTML = "";
+          //feedback.innerHTML = "";
           window.location.reload(true);
         }, timeOut);
       });
@@ -218,11 +260,37 @@ function countdown() {
 
 function checkStatus() {
   if (!isPlaying && time === 0) {
-    message.innerHTML = 'Game Over!!!';
-    score = -1;
+    newGame.style.display = "block";
+  } else {
+    newGame.style.display = "none";
   }
 }
-},{}],"../../../../../../../.npm-packages/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
+
+function gameOver() {
+  var finalScore = score;
+  timeDisplay.innerHTML = '';
+  scoreDisplay.innerHTML = 'Þú fékkst ' + finalScore;
+  wordInput.style.display = "none";
+  newGame.addEventListener("click", function (e) {});
+}
+/**
+ * From SO
+ * Shuffles array in place. ES6 version
+ * @param {Array} a items An array containing the items.
+ */
+
+
+function shuffle(a) {
+  for (var i = a.length - 1; i > 0; i--) {
+    var j = Math.floor(Math.random() * (i + 1));
+    var _ref = [a[j], a[i]];
+    a[i] = _ref[0];
+    a[j] = _ref[1];
+  }
+
+  return a;
+}
+},{}],"../../../../../../../../.npm-packages/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js":[function(require,module,exports) {
 var global = arguments[3];
 var OVERLAY_ID = '__parcel__error__overlay__';
 var OldModule = module.bundle.Module;
@@ -249,7 +317,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "65279" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "55958" + '/');
 
   ws.onmessage = function (event) {
     var data = JSON.parse(event.data);
@@ -391,5 +459,5 @@ function hmrAccept(bundle, id) {
     return hmrAccept(global.parcelRequire, id);
   });
 }
-},{}]},{},["../../../../../../../.npm-packages/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js","main.js"], null)
+},{}]},{},["../../../../../../../../.npm-packages/lib/node_modules/parcel-bundler/src/builtins/hmr-runtime.js","main.js"], null)
 //# sourceMappingURL=/main.1f19ae8e.map
