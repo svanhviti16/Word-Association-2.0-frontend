@@ -115,7 +115,8 @@ function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr
 
 // Basic game structure based on Brad Traversy's speed-typing game tutorial: https://www.youtube.com/watch?v=Yw-SYSG-028
 window.addEventListener('load', init);
-var currentLevel = 11; // Global scope variables
+var currentLevel = 11;
+var timeOut = 2500; // Global scope variables
 
 var score = 0;
 var isPlaying;
@@ -137,9 +138,9 @@ var isValid; // Initialize Game
 
 function init() {
   // getting user score from local storage
-  score = scoreStorage.getItem("userScore"); // Decrement time
+  score = scoreStorage.getItem("userScore") || 0; // Decrement time
 
-  setInterval(countdown, 1000); // Check game status (often)
+  window.countDown = setInterval(countdown, 1000); // Check game status (often)
 
   setInterval(checkStatus, 50); // Show number of seconds
 
@@ -148,19 +149,21 @@ function init() {
   if (score >= 1) {
     scoreDisplay.innerHTML = score;
   } else {
+    score = 0;
+    scoreStorage.setItem("userScore", score);
     scoreDisplay.innerHTML = "0";
   } // display random word
 
 
   showWord(wordDict);
-  wordInput.addEventListener('input', startMatch); // Call countdown every second
+  wordInput.addEventListener('input', handleInput); // Call countdown every second
   // check typed words - waiting for user to press enter
 
   matchWords(wordDict);
 } // Start match
 
 
-function startMatch() {
+function handleInput() {
   if (matchWords()) {
     isPlaying = true;
     time = 10;
@@ -178,6 +181,8 @@ function showWord(wordDict) {
   fetch('http://localhost:5042/words').then(function (response) {
     return response.json();
   }).then(function (word) {
+    console.log("mainword: " + word.mainword);
+    console.log("oword: " + word.otherwords);
     wordDict["mainword"] = word.mainword;
     wordDict["otherwords"] = word.otherwords; // contains the count
 
@@ -207,23 +212,27 @@ function matchWords(wordDict) {
     if (e.key === 'Enter') {
       if (!wordInput.value) {
         return;
-      }
+      } //if (startWithSameSubstr(wordDict.mainword, wordInput.value)) {
+      //}
+
 
       fetch("http://localhost:5042/userword/".concat(wordInput.value, "+").concat(wordDict.mainword, "+").concat(wordDict.otherwords)).then(function (response) {
         return response.json();
       }).then(function (result) {
-        timeDisplay.style.display = "none";
         isCorrect = result.is_correct;
         mostSimilar = result.most_similar;
-        var timeOut = 2500;
 
         if (isCorrect) {
+          clearTimeout(window.countDown);
+          timeDisplay.style.display = "none";
           wordInput.value = '';
           score++;
           scoreStorage.setItem("userScore", score);
           score = scoreStorage.getItem("userScore");
           document.querySelector(".main-word").classList.add("correct"); //feedback.className="green-text";
           //feedback.innerHTML = "Já, tölvan er sammála þér!";
+
+          reloadGame();
         } else {
           wordInput.value = '';
 
@@ -231,16 +240,24 @@ function matchWords(wordDict) {
             console.log("orð " + word);
           }
 
-          document.querySelector("#" + mostSimilar).className = "purple-text"; //feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
-        }
+          if (mostSimilar) {
+            clearTimeout(window.countDown);
+            timeDisplay.style.display = "none";
+            document.querySelector("#" + mostSimilar).className = "purple-text";
+            reloadGame();
+          } //feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
 
-        setTimeout(function () {
-          //feedback.innerHTML = "";
-          window.location.reload(true);
-        }, timeOut);
+        }
       });
     }
   });
+}
+
+function reloadGame() {
+  setTimeout(function () {
+    //feedback.innerHTML = "";
+    window.location.reload(true);
+  }, timeOut);
 }
 
 function countdown() {
@@ -251,6 +268,8 @@ function countdown() {
   } else if (time === 0) {
     // Game is over
     isPlaying = false;
+    gameOver();
+    clearTimeout(window.countDown);
   } // Show time
 
 
@@ -267,11 +286,21 @@ function checkStatus() {
 }
 
 function gameOver() {
-  var finalScore = score;
+  var finalScore = scoreStorage.getItem("userScore");
   timeDisplay.innerHTML = '';
   scoreDisplay.innerHTML = 'Þú fékkst ' + finalScore;
   wordInput.style.display = "none";
-  newGame.addEventListener("click", function (e) {});
+  scoreStorage.clear();
+  newGame.addEventListener("click", function (e) {
+    window.location.reload(true);
+  });
+}
+
+function startWithSameSubstr(mainWord, inputWord) {
+  if (mainWord.startsWith(inputWord.substring(0, 4))) {
+    console.log("substring found: " + inputWord.substring(0, 4));
+    return true;
+  }
 }
 /**
  * From SO
@@ -317,7 +346,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "55958" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50400" + '/');
 
   ws.onmessage = function (event) {
     var data = JSON.parse(event.data);

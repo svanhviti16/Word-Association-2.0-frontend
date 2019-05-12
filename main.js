@@ -3,6 +3,7 @@
 window.addEventListener('load', init);
 
 const currentLevel = 11;
+const timeOut = 2500;
 
 // Global scope variables
 let score = 0;
@@ -28,9 +29,9 @@ var isValid;
 // Initialize Game
 function init() {
   // getting user score from local storage
-  score = scoreStorage.getItem("userScore");
+  score = scoreStorage.getItem("userScore") || 0;
   // Decrement time
-  setInterval(countdown, 1000);
+  window.countDown = setInterval(countdown, 1000);
   // Check game status (often)
   setInterval(checkStatus, 50);
   // Show number of seconds
@@ -41,11 +42,13 @@ function init() {
       scoreDisplay.innerHTML = score;
   }
   else {
+      score = 0;
+      scoreStorage.setItem("userScore", score);
       scoreDisplay.innerHTML = "0";
   }
   // display random word
   showWord(wordDict);
-  wordInput.addEventListener('input', startMatch);
+  wordInput.addEventListener('input', handleInput);
   // Call countdown every second
   
   // check typed words - waiting for user to press enter
@@ -54,7 +57,7 @@ function init() {
 }
 
 // Start match
-function startMatch() {
+function handleInput() {
   if (matchWords()) {
     isPlaying = true;
     time = 10;
@@ -72,6 +75,9 @@ function showWord(wordDict) {
     return response.json();
   })
   .then(word => {
+    console.log("mainword: " + word.mainword);
+    console.log("oword: " + word.otherwords);
+
     wordDict["mainword"] = word.mainword;
     wordDict["otherwords"] = word.otherwords;
     // contains the count
@@ -101,17 +107,18 @@ function matchWords(wordDict) {
       if (!wordInput.value) {
         return;
       }
-
+      //if (startWithSameSubstr(wordDict.mainword, wordInput.value)) {
+      //}
       fetch(`http://localhost:5042/userword/${wordInput.value}+${wordDict.mainword}+${wordDict.otherwords}`)
       .then(function(response) {
         return response.json();
       })
       .then(result => {
-        timeDisplay.style.display = "none";
         isCorrect = result.is_correct;
         mostSimilar = result.most_similar;
-        var timeOut = 2500;
         if (isCorrect) {
+          clearTimeout(window.countDown);
+          timeDisplay.style.display = "none";
           wordInput.value = '';
           score++;
           scoreStorage.setItem("userScore", score);
@@ -120,24 +127,31 @@ function matchWords(wordDict) {
           document.querySelector(".main-word").classList.add("correct")
           //feedback.className="green-text";
           //feedback.innerHTML = "Já, tölvan er sammála þér!";
+          reloadGame();
         }
         else {
           wordInput.value = '';
           for (word in result.otherwords)
             console.log("orð " + word)
-          document.querySelector("#"+mostSimilar).className="purple-text";
-
+          if (mostSimilar) {
+            clearTimeout(window.countDown);
+            timeDisplay.style.display = "none";
+            document.querySelector("#"+mostSimilar).className="purple-text";
+            reloadGame();
+          }
           //feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
         }
-        setTimeout(function() {
-          //feedback.innerHTML = "";
-          window.location.reload(true);
-        }, timeOut);
       })
     }
   })
 }
 
+function reloadGame() {
+  setTimeout(function() {
+    //feedback.innerHTML = "";
+    window.location.reload(true);
+    }, timeOut);
+}
 function countdown() {
   // Make sure time is not run out
   if (time > 0) {
@@ -146,6 +160,8 @@ function countdown() {
   } else if (time === 0) {
     // Game is over
     isPlaying = false;
+    gameOver();
+    clearTimeout(window.countDown);
   }
   // Show time
   timeDisplay.innerHTML = time;
@@ -161,13 +177,21 @@ function checkStatus() {
 }
 
 function gameOver() {
-  var finalScore = score;
+  var finalScore = scoreStorage.getItem("userScore");
   timeDisplay.innerHTML = '';
   scoreDisplay.innerHTML = 'Þú fékkst ' + finalScore;
   wordInput.style.display = "none";
+  scoreStorage.clear();
   newGame.addEventListener("click", function (e) {
-
+    window.location.reload(true);
   })
+}
+
+function startWithSameSubstr(mainWord, inputWord) {
+  if (mainWord.startsWith(inputWord.substring(0, 4))) {
+    console.log("substring found: " + inputWord.substring(0, 4))
+    return true;
+  }
 }
 /**
  * From SO
