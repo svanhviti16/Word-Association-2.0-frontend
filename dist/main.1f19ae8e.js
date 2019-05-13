@@ -113,7 +113,12 @@ function _iterableToArray(iter) { if (Symbol.iterator in Object(iter) || Object.
 
 function _arrayWithoutHoles(arr) { if (Array.isArray(arr)) { for (var i = 0, arr2 = new Array(arr.length); i < arr.length; i++) { arr2[i] = arr[i]; } return arr2; } }
 
-// Basic game structure based on Brad Traversy's speed-typing game tutorial: https://www.youtube.com/watch?v=Yw-SYSG-028
+/*
+* Word Association game based on word embeddings
+* Uses parcelJS bundler
+* Basic game structure based on Brad Traversy's speed-typing game tutorial: https://www.youtube.com/watch?v=Yw-SYSG-028
+*
+*/
 window.addEventListener('load', init);
 var currentLevel = 11;
 var timeOut = 2500; // Global scope variables
@@ -124,7 +129,6 @@ var time = currentLevel;
 scoreStorage = window.localStorage; // DOM elements
 
 var wordInput = document.querySelector('#word-input');
-var contents = new Array();
 var scoreDisplay = document.querySelector('#score');
 var scoreText = document.querySelector('#scoreText');
 var timeDisplay = document.querySelector('#time');
@@ -137,14 +141,12 @@ var wordDict = {};
 var isValid; // Initialize Game
 
 function init() {
-  // getting user score from local storage
+  // getting user score from local storage (and returns 0 if null)
   score = scoreStorage.getItem("userScore") || 0; // Decrement time
 
   window.countDown = setInterval(countdown, 1000); // Check game status (often)
 
-  setInterval(checkStatus, 50); // Show number of seconds
-
-  console.log(currentLevel); //seconds.innerHTML = currentLevel;
+  setInterval(checkStatus, 50);
 
   if (score >= 1) {
     scoreDisplay.innerHTML = score;
@@ -156,8 +158,7 @@ function init() {
 
 
   showWord(wordDict);
-  wordInput.addEventListener('input', handleInput); // Call countdown every second
-  // check typed words - waiting for user to press enter
+  wordInput.addEventListener('input', handleInput); // check typed words - waiting for user to press enter
 
   matchWords(wordDict);
 } // Start match
@@ -173,16 +174,12 @@ function handleInput() {
   }
 
   scoreDisplay.innerHTML = score;
-} // match word to skyldheiti
-// random index word
-
+}
 
 function showWord(wordDict) {
   fetch('http://localhost:5042/words').then(function (response) {
     return response.json();
   }).then(function (word) {
-    console.log("mainword: " + word.mainword);
-    console.log("oword: " + word.otherwords);
     wordDict["mainword"] = word.mainword;
     wordDict["otherwords"] = word.otherwords; // contains the count
 
@@ -212,42 +209,40 @@ function matchWords(wordDict) {
     if (e.key === 'Enter') {
       if (!wordInput.value) {
         return;
-      } //if (startWithSameSubstr(wordDict.mainword, wordInput.value)) {
-      //}
+      } // unexplained HTML error in this line :( Doesn't affect game though
 
 
       fetch("http://localhost:5042/userword/".concat(wordInput.value, "+").concat(wordDict.mainword, "+").concat(wordDict.otherwords)).then(function (response) {
         return response.json();
       }).then(function (result) {
-        isCorrect = result.is_correct;
-        mostSimilar = result.most_similar;
+        if (wordInput.value != wordDict.mainword) {
+          isCorrect = result.is_correct;
+          mostSimilar = result.most_similar; // correct answer
 
-        if (isCorrect) {
-          clearTimeout(window.countDown);
-          timeDisplay.style.display = "none";
-          wordInput.value = '';
-          score++;
-          scoreStorage.setItem("userScore", score);
-          score = scoreStorage.getItem("userScore");
-          document.querySelector(".main-word").classList.add("correct"); //feedback.className="green-text";
-          //feedback.innerHTML = "Já, tölvan er sammála þér!";
-
-          reloadGame();
-        } else {
-          wordInput.value = '';
-
-          for (word in result.otherwords) {
-            console.log("orð " + word);
-          }
-
-          if (mostSimilar) {
+          if (isCorrect) {
             clearTimeout(window.countDown);
             timeDisplay.style.display = "none";
-            document.querySelector("#" + mostSimilar).className = "purple-text";
+            wordInput.value = '';
+            score++;
+            scoreStorage.setItem("userScore", score);
+            score = scoreStorage.getItem("userScore");
+            document.querySelector(".main-word").classList.add("correct");
             reloadGame();
-          } //feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
+          } // wrong but valid answer
+          else {
+              wordInput.value = '';
 
-        }
+              if (mostSimilar) {
+                clearTimeout(window.countDown);
+                timeDisplay.style.display = "none";
+                document.querySelector("#" + mostSimilar).className = "purple-text";
+                reloadGame();
+              }
+            }
+        } // clearing input if the user simply entered the main word
+
+
+        wordInput.value = '';
       });
     }
   });
@@ -255,7 +250,6 @@ function matchWords(wordDict) {
 
 function reloadGame() {
   setTimeout(function () {
-    //feedback.innerHTML = "";
     window.location.reload(true);
   }, timeOut);
 }
@@ -287,20 +281,13 @@ function checkStatus() {
 
 function gameOver() {
   var finalScore = scoreStorage.getItem("userScore");
-  timeDisplay.innerHTML = '';
+  timeDisplay.style.display = "none";
   scoreDisplay.innerHTML = 'Þú fékkst ' + finalScore;
   wordInput.style.display = "none";
   scoreStorage.clear();
   newGame.addEventListener("click", function (e) {
     window.location.reload(true);
   });
-}
-
-function startWithSameSubstr(mainWord, inputWord) {
-  if (mainWord.startsWith(inputWord.substring(0, 4))) {
-    console.log("substring found: " + inputWord.substring(0, 4));
-    return true;
-  }
 }
 /**
  * From SO
@@ -346,7 +333,7 @@ var parent = module.bundle.parent;
 if ((!parent || !parent.isParcelRequire) && typeof WebSocket !== 'undefined') {
   var hostname = "" || location.hostname;
   var protocol = location.protocol === 'https:' ? 'wss' : 'ws';
-  var ws = new WebSocket(protocol + '://' + hostname + ':' + "50400" + '/');
+  var ws = new WebSocket(protocol + '://' + hostname + ':' + "53884" + '/');
 
   ws.onmessage = function (event) {
     var data = JSON.parse(event.data);

@@ -1,4 +1,9 @@
-// Basic game structure based on Brad Traversy's speed-typing game tutorial: https://www.youtube.com/watch?v=Yw-SYSG-028
+/*
+* Word Association game based on word embeddings
+* Uses parcelJS bundler
+* Basic game structure based on Brad Traversy's speed-typing game tutorial: https://www.youtube.com/watch?v=Yw-SYSG-028
+*
+*/
 
 window.addEventListener('load', init);
 
@@ -14,7 +19,6 @@ scoreStorage = window.localStorage;
 
 // DOM elements
 const wordInput = document.querySelector('#word-input')
-var contents = new Array()
 const scoreDisplay = document.querySelector('#score')
 const scoreText = document.querySelector('#scoreText')
 const timeDisplay = document.querySelector('#time')
@@ -28,16 +32,13 @@ var isValid;
 
 // Initialize Game
 function init() {
-  // getting user score from local storage
+  // getting user score from local storage (and returns 0 if null)
   score = scoreStorage.getItem("userScore") || 0;
   // Decrement time
   window.countDown = setInterval(countdown, 1000);
   // Check game status (often)
   setInterval(checkStatus, 50);
-  // Show number of seconds
-  console.log(currentLevel)
-  //seconds.innerHTML = currentLevel;
-  
+
   if (score >= 1) {
       scoreDisplay.innerHTML = score;
   }
@@ -48,12 +49,9 @@ function init() {
   }
   // display random word
   showWord(wordDict);
-  wordInput.addEventListener('input', handleInput);
-  // Call countdown every second
-  
+  wordInput.addEventListener('input', handleInput);  
   // check typed words - waiting for user to press enter
   matchWords(wordDict);
-  
 }
 
 // Start match
@@ -67,17 +65,13 @@ function handleInput() {
   }
   scoreDisplay.innerHTML = score;
 }
-// match word to skyldheiti
-// random index word
+
 function showWord(wordDict) {
   fetch('http://localhost:5042/words')
   .then(function(response) {
     return response.json();
   })
   .then(word => {
-    console.log("mainword: " + word.mainword);
-    console.log("oword: " + word.otherwords);
-
     wordDict["mainword"] = word.mainword;
     wordDict["otherwords"] = word.otherwords;
     // contains the count
@@ -89,7 +83,6 @@ function showWord(wordDict) {
       listword = document.createElement("h2");
       listword.innerHTML = element;
       listword.setAttribute("id", element);
-
       if (element === word.mainword) {
         listword.setAttribute("class", "main-word")
       }
@@ -107,40 +100,39 @@ function matchWords(wordDict) {
       if (!wordInput.value) {
         return;
       }
-      //if (startWithSameSubstr(wordDict.mainword, wordInput.value)) {
-      //}
+      // unexplained HTML error in this line :( Doesn't affect game though
       fetch(`http://localhost:5042/userword/${wordInput.value}+${wordDict.mainword}+${wordDict.otherwords}`)
       .then(function(response) {
         return response.json();
       })
       .then(result => {
-        isCorrect = result.is_correct;
-        mostSimilar = result.most_similar;
-        if (isCorrect) {
-          clearTimeout(window.countDown);
-          timeDisplay.style.display = "none";
-          wordInput.value = '';
-          score++;
-          scoreStorage.setItem("userScore", score);
-          score = scoreStorage.getItem("userScore");
-          
-          document.querySelector(".main-word").classList.add("correct")
-          //feedback.className="green-text";
-          //feedback.innerHTML = "Já, tölvan er sammála þér!";
-          reloadGame();
-        }
-        else {
-          wordInput.value = '';
-          for (word in result.otherwords)
-            console.log("orð " + word)
-          if (mostSimilar) {
+        if (wordInput.value != wordDict.mainword) {
+          isCorrect = result.is_correct;
+          mostSimilar = result.most_similar;
+          // correct answer
+          if (isCorrect) {
             clearTimeout(window.countDown);
             timeDisplay.style.display = "none";
-            document.querySelector("#"+mostSimilar).className="purple-text";
+            wordInput.value = '';
+            score++;
+            scoreStorage.setItem("userScore", score);
+            score = scoreStorage.getItem("userScore");
+            document.querySelector(".main-word").classList.add("correct")
             reloadGame();
           }
-          //feedback.innerHTML = 'Tölvan segir að þetta orð passi betur við ' + mostSimilar;
+          // wrong but valid answer
+          else {
+            wordInput.value = '';
+            if (mostSimilar)  {
+              clearTimeout(window.countDown);
+              timeDisplay.style.display = "none";
+              document.querySelector("#"+mostSimilar).className="purple-text";
+              reloadGame();
+            }
+          }
         }
+        // clearing input if the user simply entered the main word
+        wordInput.value = '';
       })
     }
   })
@@ -148,7 +140,6 @@ function matchWords(wordDict) {
 
 function reloadGame() {
   setTimeout(function() {
-    //feedback.innerHTML = "";
     window.location.reload(true);
     }, timeOut);
 }
@@ -178,7 +169,7 @@ function checkStatus() {
 
 function gameOver() {
   var finalScore = scoreStorage.getItem("userScore");
-  timeDisplay.innerHTML = '';
+  timeDisplay.style.display = "none";
   scoreDisplay.innerHTML = 'Þú fékkst ' + finalScore;
   wordInput.style.display = "none";
   scoreStorage.clear();
@@ -187,12 +178,6 @@ function gameOver() {
   })
 }
 
-function startWithSameSubstr(mainWord, inputWord) {
-  if (mainWord.startsWith(inputWord.substring(0, 4))) {
-    console.log("substring found: " + inputWord.substring(0, 4))
-    return true;
-  }
-}
 /**
  * From SO
  * Shuffles array in place. ES6 version

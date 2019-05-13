@@ -39,6 +39,9 @@ img {
 
 button {
   display: none;
+  background-color: rgb(216, 119, 0);
+  color: white;
+  width: 100%;
 }
 
 .purple-text {
@@ -46,7 +49,21 @@ button {
   font-size: 40px;
 }
 
+.gray-text {
+  color: darkslategrey !important;
+}
 .correct {
   color: green !important;
   font-size: 40px;
+}
+
+#time {
+  color: darkred;
+  font-size: 30px;
+  font-weight: bold;
+}
+
+.alert {
+  margin: 30px;
+  background-color: rgb(255, 201, 102);
 }
